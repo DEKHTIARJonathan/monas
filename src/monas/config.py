@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import re
 import sys
 import typing
 from pathlib import Path
@@ -14,6 +16,19 @@ if typing.TYPE_CHECKING:
     from tomlkit.toml_document import TOMLDocument
 
     from monas.project import PyPackage
+
+
+def extract_package_names(packages):
+    """
+    Extracts the base package names from a list of package strings.
+
+    Args:
+        packages (list): List of package strings with optional extras.
+
+    Returns:
+        list: List of package names without extras.
+    """
+    return [re.match(r"^[^\[]+", pkg).group() for pkg in packages]
 
 
 class Config:
@@ -47,6 +62,25 @@ class Config:
         return Git(self.path)
 
     @property
+    def packages_extra_dict(self) -> dict:
+        """
+        Creates a dictionary mapping package names to their extras.
+
+        Returns:
+            dict: Dictionary mapping package names to lists of extras.
+        """
+        package_dict = {}
+        for pkg in self._tool.get("packages", []):
+            match = re.match(r"^([^\[]+)\[([^\]]+)\]", pkg)
+            if match:
+                package_name = match.group(1)
+                extras = match.group(2).split(",")
+                package_dict[package_name] = extras
+            else:
+                package_dict[pkg] = []  # No extras
+        return package_dict
+
+    @property
     def root_venv(self) -> Path:
         return self.path / ".venv"
 
@@ -59,7 +93,9 @@ class Config:
     @property
     def package_paths(self) -> list[Path]:
         """The list of paths that contain packages"""
-        return [self.path / p for p in self._tool.get("packages", [])]
+        return [
+            self.path / p for p in extract_package_names(self._tool.get("packages", []))
+        ]
 
     @property
     def version(self) -> str:
@@ -111,6 +147,11 @@ class Config:
             return
         self._tool.setdefault("packages", []).append(relative_path.as_posix())
         TOMLFile(self.path / "pyproject.toml").write(self._pyproject)
+
+    def extra_str_for_package(self, package_name: str) -> str:
+        with contextlib.suppress(KeyError):
+            return f"[{','.join(self.packages_extra_dict[package_name])}]"
+        return ""
 
     def iter_packages(self) -> Iterable[PyPackage]:
         """Iterate over the packages in the monorepo"""

@@ -38,7 +38,10 @@ def install(config: Config, *, concurrency: int, root: bool, **kwargs: Any) -> N
             f"Installing [primary]{package_count}[/] package(s) to the root project",
             spinner="point",
         ):
-            requirements = (sh_join(["-e", pkg.path.as_posix()]) for pkg in packages)
+            requirements = (
+                f"{sh_join(['-e', pkg.path.as_posix()])}{config.extra_str_for_package(pkg.name)}"
+                for pkg in packages
+            )
             pip_install(config.root_venv, requirements)
         info("[succ]Installation done[/]")
         return
