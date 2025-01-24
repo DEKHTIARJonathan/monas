@@ -39,7 +39,7 @@ def install(config: Config, *, concurrency: int, root: bool, **kwargs: Any) -> N
             spinner="point",
         ):
             requirements = (
-                f"{sh_join(['-e', pkg.path.as_posix()])}{config.extra_str_for_package(pkg.name)}"
+                f"{sh_join(['-e', pkg.path.as_posix()])}{config.extra_str_for_package(pkg.path.name)}"
                 for pkg in packages
             )
             pip_install(config.root_venv, requirements)

@@ -6,6 +6,7 @@ import sys
 import typing
 from pathlib import Path
 from typing import Iterable
+from functools import cached_property
 
 import click
 from tomlkit.toml_file import TOMLFile
@@ -61,7 +62,7 @@ class Config:
         """Get the git repository."""
         return Git(self.path)
 
-    @property
+    @cached_property
     def packages_extra_dict(self) -> dict:
         """
         Creates a dictionary mapping package names to their extras.
@@ -150,7 +151,8 @@ class Config:
 
     def extra_str_for_package(self, package_name: str) -> str:
         with contextlib.suppress(KeyError):
-            return f"[{','.join(self.packages_extra_dict[package_name])}]"
+            extras = self.packages_extra_dict[package_name]
+            return f"[{','.join(extras)}]" if extras else ""
         return ""
 
     def iter_packages(self) -> Iterable[PyPackage]:
